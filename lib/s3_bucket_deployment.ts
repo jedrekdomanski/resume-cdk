@@ -6,7 +6,7 @@ import { S3_BUCKET_DEPLOYMENT_NAME } from './consts';
 export class S3BucketDeployment extends BucketDeployment {
   constructor(scope: Construct, bucket: Bucket) {
     super(scope, S3_BUCKET_DEPLOYMENT_NAME, {
-      sources: [Source.asset('public')],
+      sources: [Source.asset('lib/static-website')],
       destinationBucket: bucket
     });
   }
