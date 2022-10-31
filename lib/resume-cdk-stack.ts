@@ -20,7 +20,7 @@ export class ResumeCdkStack extends cdk.Stack {
     const resFn = new lambda.Function(this, 'ResumeLambdaFunction', {
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('resume-lambda'),
+      code: lambda.Code.fromAsset('resume-lambda')
     });
 
     // API Gateway REST API resource backed by "resFn" function.
