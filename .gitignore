@@ -1,7 +1,8 @@
 !jest.config.js
 *.d.ts
 node_modules
-lib/.DS_Store
+.DS_Store
+Gemfile.lock
 
 # CDK asset staging directory
 .cdk.staging
