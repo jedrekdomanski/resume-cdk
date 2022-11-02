@@ -9,9 +9,9 @@ name: Ruby
 
 on:
   push:
-    branches: [ "master" ]
+    branches: '**'
   pull_request:
-    branches: [ "master" ]
+    branches: '**'
 
 permissions:
   contents: read
@@ -34,7 +34,8 @@ jobs:
       with:
         ruby-version: ${{ matrix.ruby-version }}
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
-    - name: Run tests
-      run: cd lib/lambdas/api-proxy-handler
-      run: bundle install
-      run: rspec .
+    - name: Install gems and run tests
+      run: |
+        cd lib/lambdas/api-proxy-handler
+        bundle install
+        rspec .
