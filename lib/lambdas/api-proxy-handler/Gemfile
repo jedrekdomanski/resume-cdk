@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'activemodel'
+gem 'aws-sdk-sqs'
+gem 'pry'
+gem 'rspec'
