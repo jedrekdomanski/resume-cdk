@@ -5,16 +5,11 @@ require_relative './index'
 
 RSpec.describe 'handler', :unit do
   it 'returns 200 status code and proper message when event is valid' do
-    valid_event = JSON.generate(
-      {
-        some_key: 'asdasd',
-        body: {
-          name: 'test',
-          email: 'asdasd',
-          message: 'asdada'
-        }
-      }
-    )
+    valid_event = {
+      'resource' => '/sendEmail',
+      'queryStringParameters' => { 'name' => 'Test', 'message' => 'Test', 'email' => 'Test' },
+      'body' => { 'name' => 'Test', 'email' => 'Email', 'message' => 'message' }
+    }
     allow(ENV).to receive(:fetch).with('SQS_QUEUE_URL').and_return('http://url')
     expect(Aws::SQS::Client).to receive_message_chain(:new, :send_message)
 
@@ -25,16 +20,11 @@ RSpec.describe 'handler', :unit do
   end
 
   it 'returns 400 status code and proper message when event is invalid' do
-    invalid_event = JSON.generate(
-      {
-        some_key: 'asdasd',
-        body: {
-          name: '',
-          email: '',
-          message: 'asdada'
-        }
-      }
-    )
+    invalid_event = {
+      'resource' => '/sendEmail',
+      'queryStringParameters' => { 'name' => 'Test', 'message' => 'Test', 'email' => 'Test' },
+      'body' => { 'message' => 'message' }
+    }
     result = handler(event: invalid_event, context: nil)
 
     expect(result[:body][:error]).to eq('Name can\'t be blank and Email can\'t be blank')
