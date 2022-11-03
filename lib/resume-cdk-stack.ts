@@ -11,15 +11,14 @@ import {
   EMAIL_SUBSCRIPTION,
   EMAIL_TOPIC_ARN,
   EMAIL_TOPIC_NAME,
-  SUBJECT_KEY,
-  SUBJECT_TEXT,
-  SQS_URL_KEY
+  SUBJECT_TEXT
 } from './consts';
 import { Queue as SQSQueue } from 'aws-cdk-lib/aws-sqs';
 import { Topic as SNSTopic } from 'aws-cdk-lib/aws-sns';
 import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { Policy, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Policy, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { LogGroup } from 'aws-cdk-lib/aws-logs';
 
 export class ResumeCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -46,9 +45,19 @@ export class ResumeCdkStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(3),
       code: lambda.Code.fromAsset('lib/lambdas/api-proxy-handler'),
       environment: {
-        SQS_URL_KEY: queue.queueUrl
+        'SQS_QUEUE_URL': queue.queueUrl
       }
     });
+
+    // Create and add policy statement to allow lambda to send message to SQS queue
+    const sendMessagePolicy = new PolicyStatement({
+      actions: [ 'sqs:SendMessage' ],
+      resources: [queue.queueArn]
+    });
+
+    apiProxyLambda.role?.attachInlinePolicy(
+      new Policy(this, 'send-message', { statements: [sendMessagePolicy] })
+    )
 
     // API Gateway REST API backed by "apiProxyLambda" function.
     const api = new apigw.LambdaRestApi(this, 'APIGateway', {
@@ -67,14 +76,14 @@ export class ResumeCdkStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(3),
       code: lambda.Code.fromAsset('lib/lambdas/sqs-publisher-lambda'),
       environment: {
-        EMAIL_TOPIC_ARN: topic.topicArn,
-        SUBJECT_KEY: SUBJECT_TEXT
+        'EMAIL_TOPIC_ARN': topic.topicArn,
+        'JOB_OFFER_SUBJECT': SUBJECT_TEXT
       }
     });
     const eventSource = new SqsEventSource(queue);
     sqsMessagePublisherLambda.addEventSource(eventSource)
 
-    // Create a policy statement
+    // Create a policy statement to allow lambda to read/delete/GetQueueAttributes from SQS queue
     const sqsManageMessagesPolicy = new PolicyStatement({
       actions: [
         'sqs:ReceiveMessage',
@@ -84,8 +93,21 @@ export class ResumeCdkStack extends cdk.Stack {
       resources: [queue.queueArn]
     });
 
+    // Create a policy statement to allow lambda to publish messages to SNS topic
+    const publishMessagesToTopicPolicy = new PolicyStatement({
+      actions: [
+        'sns:Publish'
+      ],
+      resources: [topic.topicArn]
+    });
+
     sqsMessagePublisherLambda.role?.attachInlinePolicy(
-      new Policy(this, 'manage-queue-messages', { statements: [sqsManageMessagesPolicy] })
+      new Policy(this, 'manage-queue-messages',{
+        statements: [
+          sqsManageMessagesPolicy,
+          publishMessagesToTopicPolicy
+        ]
+      })
     )
   }
 }

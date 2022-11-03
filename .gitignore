@@ -2,7 +2,6 @@
 *.d.ts
 node_modules
 .DS_Store
-Gemfile.lock
 
 # CDK asset staging directory
 .cdk.staging
