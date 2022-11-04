@@ -1,5 +1,5 @@
 import { Construct } from 'constructs';
-import { Bucket } from 'aws-cdk-lib/aws-s3';
+import { Bucket, CfnBucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source }from 'aws-cdk-lib/aws-s3-deployment';
 import { S3_BUCKET_DEPLOYMENT_NAME } from './consts';
 
