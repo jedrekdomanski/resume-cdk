@@ -17,7 +17,15 @@ import { Queue as SQSQueue } from 'aws-cdk-lib/aws-sqs';
 import { Topic as SNSTopic } from 'aws-cdk-lib/aws-sns';
 import { EmailSubscription } from 'aws-cdk-lib/aws-sns-subscriptions';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
-import { Policy, PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import {
+  AnyPrincipal,
+  ManagedPolicy,
+  Policy,
+  Role,
+  PolicyDocument,
+  PolicyStatement,
+  ServicePrincipal
+} from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 
 export class ResumeCdkStack extends cdk.Stack {
@@ -25,6 +33,7 @@ export class ResumeCdkStack extends cdk.Stack {
     super(scope, id, props);
     //S3 Bucket
     const staticWebsiteBucket = new S3Bucket(this);
+
     new S3BucketDeployment(this, staticWebsiteBucket);
 
     // Cloudfront Distribution with origin as S3 bucket
@@ -59,11 +68,50 @@ export class ResumeCdkStack extends cdk.Stack {
       new Policy(this, 'send-message', { statements: [sendMessagePolicy] })
     )
 
+    const cloudWatchRole = new Role(this, 'CloudWatchRole', {
+      assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
+      description: 'Grant write access to CloudWatch',
+    });
+
+    const policy = ManagedPolicy.fromManagedPolicyArn(
+      this,
+      'CloudWatchManagedPolicy',
+      'arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs'
+    );
+
+    cloudWatchRole.addManagedPolicy(policy);
+
+    const cfnAccount = new apigw.CfnAccount(this, 'ApiGatewayAccount', {
+      cloudWatchRoleArn: cloudWatchRole.roleArn,
+    });
+
     // API Gateway REST API backed by "apiProxyLambda" function.
     const api = new apigw.LambdaRestApi(this, 'APIGateway', {
       handler: apiProxyLambda,
-      proxy: false
+      proxy: false,
+      cloudWatchRole: true
     });
+
+    // Enable API log group
+    const stage = api.deploymentStage!.node.defaultChild as apigw.CfnStage;
+    const logGroup = new LogGroup(api, 'AccessLogs', {
+      retention: 30, // Keep logs for 30 days
+    });
+
+    stage.accessLogSetting = {
+      destinationArn: logGroup.logGroupArn,
+      format: JSON.stringify({
+        requestId: '$context.requestId',
+        userAgent: '$context.identity.userAgent',
+        sourceIp: '$context.identity.sourceIp',
+        requestTime: '$context.requestTime',
+        httpMethod: '$context.httpMethod',
+        path: '$context.path',
+        status: '$context.status',
+        responseLength: '$context.responseLength',
+      }),
+    };
+    logGroup.grantWrite(new ServicePrincipal('apigateway.amazonaws.com'));
 
     const items = api.root.addResource('sendEmail');
     items.addMethod('POST'); // POST /sendEmail
