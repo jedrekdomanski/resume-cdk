@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'aws-sdk-sqs'
-require_relative './requester_message'
 require 'json'
 require 'logger'
 
@@ -13,9 +12,10 @@ def handler(event:, context:)
   name    = event['body']['name']
   email   = event['body']['email']
   message = event['body']['message']
-  message = RequesterMessage.new(name: name, email: email, message: message)
 
-  return error_response(message) if message.invalid?
+  validate_presence_of(name)
+  validate_presence_of(email)
+  validate_presence_of(message)
 
   send_message_to_sqs(name, email, message)
   {
@@ -31,11 +31,10 @@ end
 
 private
 
-def error_response(message)
-  {
-    body: { error: message.errors.full_messages.to_sentence },
-    status_code: 400
-  }
+def validate_presence_of(attr)
+  return unless attr.empty?
+
+  raise StandardError, "Name, email and message can't be blank"
 end
 
 def send_message_to_sqs(name, email, message)

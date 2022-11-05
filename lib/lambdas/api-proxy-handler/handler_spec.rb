@@ -23,11 +23,11 @@ RSpec.describe 'handler', :unit do
     invalid_event = {
       'resource' => '/sendEmail',
       'queryStringParameters' => { 'name' => 'Test', 'message' => 'Test', 'email' => 'Test' },
-      'body' => { 'message' => 'message' }
+      'body' => { 'name' => '', 'email' => 'Email', 'message' => 'message' }
     }
     result = handler(event: invalid_event, context: nil)
 
-    expect(result[:body][:error]).to eq('Name can\'t be blank and Email can\'t be blank')
+    expect(result[:body][:error]).to eq('Name, email and message can\'t be blank')
     expect(result[:status_code]).to eq(400)
   end
 end
