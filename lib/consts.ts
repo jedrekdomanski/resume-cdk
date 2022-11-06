@@ -9,3 +9,4 @@ export const EMAIL_TOPIC_NAME = 'EmailTopic';
 export const SUBJECT_TEXT = 'New Message From Your Website';
 export const GITHUB_OWNER = 'jedrekdomanski';
 export const GITHUB_REPO_NAME = 'resume';
+export const DEFAULT_ROOT_OBJECT = 'index.html';
