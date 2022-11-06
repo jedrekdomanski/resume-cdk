@@ -44,7 +44,7 @@ export class ResumeCdkStack extends cdk.Stack {
     const queue = new SQSQueue(this, 'EmailSqsQueue');
 
     // SNS Topic and subscription to the topic
-    const topic = new SNSTopic(this, EMAIL_TOPIC_NAME, { displayName: 'Emails topic' });
+    const topic = new SNSTopic(this, EMAIL_TOPIC_NAME, { displayName: 'New Message From Your Website' });
     topic.addSubscription(new EmailSubscription(EMAIL_SUBSCRIPTION));
 
     // Lambda function to send a message to SQS
