@@ -9,9 +9,10 @@ def handler(event:, context:)
   logger.info('## Received New Message from API##')
   logger.info(event)
 
-  name    = event['body']['name']
-  email   = event['body']['email']
-  message = event['body']['message']
+  request_body = JSON.parse(event['body'])
+  name    = request_body['name']
+  email   = request_body['email']
+  message = request_body['message']
 
   validate_presence_of(name)
   validate_presence_of(email)

@@ -27,14 +27,10 @@ end
 private
 
 def build_message(body)
-  '<html>' \
-    '<head><title>HTML from API Gateway/Lambda</title></head>' \
-    '<body>' \
-      "<h3>FROM: #{body['name']}</h3></br>" \
-      "<h3>EMAIL: #{body['email']}</h3></br>" \
-      "<h3>EMAIL: #{body['message']}</h3></br>" \
-    '</body>' \
-  '</html>'
+  json = JSON.parse(body)
+  "FROM: #{json['name']}, " \
+  "EMAIL: #{json['email']}, " \
+  "MESSAGE: #{json['message']}"
 end
 
 def log_info(event)
