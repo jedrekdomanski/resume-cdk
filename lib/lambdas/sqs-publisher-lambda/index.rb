@@ -28,8 +28,8 @@ private
 
 def build_message(body)
   json = JSON.parse(body)
-  "FROM: #{json['name']}, " \
-  "EMAIL: #{json['email']}, " \
+  "FROM: #{json['name']} \n" \
+  "EMAIL: #{json['email']} \n" \
   "MESSAGE: #{json['message']}"
 end
 
