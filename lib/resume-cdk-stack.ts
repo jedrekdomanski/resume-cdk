@@ -27,6 +27,7 @@ import {
   ServicePrincipal
 } from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
+import { CodeBuildProject } from './code_build'
 
 export class ResumeCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -157,5 +158,7 @@ export class ResumeCdkStack extends cdk.Stack {
         ]
       })
     )
+
+    new CodeBuildProject(this);
   }
 }
