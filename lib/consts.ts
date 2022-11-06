@@ -7,3 +7,5 @@ export const EMAIL_SUBSCRIPTION = 'jedrek.domanski@gmail.com';
 export const EMAIL_TOPIC_ARN = 'EMAIL_TOPIC_ARN';
 export const EMAIL_TOPIC_NAME = 'EmailTopic';
 export const SUBJECT_TEXT = 'New Job offer';
+export const GITHUB_OWNER = 'jedrekdomanski';
+export const GITHUB_REPO_NAME = 'resume';
