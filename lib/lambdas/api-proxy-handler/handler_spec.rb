@@ -14,9 +14,10 @@ RSpec.describe 'handler', :unit do
     expect(Aws::SQS::Client).to receive_message_chain(:new, :send_message)
 
     result = handler(event: valid_event, context: nil)
+    response = JSON.parse(result[:body])
 
-    expect(result[:body]).to eq('Thank you for reaching out! I\'ll contact you as soon as I can')
-    expect(result[:status_code]).to eq(200)
+    expect(response['message']).to eq('Thank you for reaching out! I\'ll contact you as soon as I can')
+    expect(result[:statusCode]).to eq(200)
   end
 
   it 'returns 400 status code and proper message when event is invalid' do
@@ -26,8 +27,9 @@ RSpec.describe 'handler', :unit do
       'body' => '{ "name": "","email":"Email","message":"message" }'
     }
     result = handler(event: invalid_event, context: nil)
+    response = JSON.parse(result[:body])
 
-    expect(result[:body][:error]).to eq('Name, email and message can\'t be blank')
-    expect(result[:status_code]).to eq(400)
+    expect(response['error']).to eq('Name, email and message can\'t be blank')
+    expect(result[:statusCode]).to eq(400)
   end
 end

@@ -14,23 +14,21 @@ def handler(event:, context:)
   email   = request_body['email']
   message = request_body['message']
 
-  validate_presence_of(name)
-  validate_presence_of(email)
-  validate_presence_of(message)
+  validate_params(name, email, message)
 
   send_message_to_sqs(name, email, message)
-  {
-    body: 'Thank you for reaching out! I\'ll contact you as soon as I can',
-    status_code: 200
-  }
+  success
 rescue StandardError => e
-  {
-    body: { error: e.message },
-    status_code: 400
-  }
+  error(e)
 end
 
 private
+
+def validate_params(name, email, message)
+  validate_presence_of(name)
+  validate_presence_of(email)
+  validate_presence_of(message)
+end
 
 def validate_presence_of(attr)
   return unless attr.empty?
@@ -45,6 +43,28 @@ def send_message_to_sqs(name, email, message)
     message_body: JSON.generate({ name: name, email: email, message: message })
   }
   client.send_message(message)
+end
+
+def success
+  {
+    body: JSON.generate(message: 'Thank you for reaching out! I\'ll contact you as soon as I can'),
+    statusCode: 200,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    isBase64Encoded: false
+  }
+end
+
+def error(error)
+  {
+    body: JSON.generate({ error: error.message }),
+    statusCode: 400,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    isBase64Encoded: false
+  }
 end
 
 # Sample event payload (Hash)
