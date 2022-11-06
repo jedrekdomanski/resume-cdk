@@ -6,6 +6,6 @@ export const RESPONSE_BODY = 'Thank you for reaching out! I\'ll get back to you 
 export const EMAIL_SUBSCRIPTION = 'jedrek.domanski@gmail.com';
 export const EMAIL_TOPIC_ARN = 'EMAIL_TOPIC_ARN';
 export const EMAIL_TOPIC_NAME = 'EmailTopic';
-export const SUBJECT_TEXT = 'New Job offer';
+export const SUBJECT_TEXT = 'New Message From Your Website';
 export const GITHUB_OWNER = 'jedrekdomanski';
 export const GITHUB_REPO_NAME = 'resume';
