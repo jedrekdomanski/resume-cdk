@@ -1,5 +1,6 @@
 import { Construct } from 'constructs';
-import { CLOUD_FRONT_DISTRIBUTION_NAME } from './consts';
+import { Tags } from 'aws-cdk-lib';
+import { CLOUD_FRONT_DISTRIBUTION_NAME, DEFAULT_ROOT_OBJECT } from './consts';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { S3Origin} from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -12,7 +13,10 @@ export class CloudFrontDistribution extends cloudfront.Distribution {
         origin: new S3Origin(bucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: true
-      }
+      },
+      defaultRootObject: DEFAULT_ROOT_OBJECT,
+      comment: 'Cloud Front distribution backed with S3 backet'
     });
+    Tags.of(this).add('DistributionName', 'S3bucket Cloud Front distribution');
   };
 };
