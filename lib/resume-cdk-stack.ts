@@ -53,15 +53,16 @@ export class ResumeCdkStack extends cdk.Stack {
     });
 
     // Create HTTPS certificates for frontend and API
-    const frontendCertificate = new acm.DnsValidatedCertificate(this, 'ResumeAcertificate', {
+    const frontendCertificate = new acm.Certificate(this, 'ResumeAcertificate', {
       domainName: DOMAIN_NAME,
-      hostedZone: hostedZone,
-      region: 'us-east-1'
+      subjectAlternativeNames: [API_DOMAIN_NAME],
+      validation: acm.CertificateValidation.fromDns(hostedZone)
     });
 
-    const apiCertificate = new acm.DnsValidatedCertificate(this, 'ApiResumeCertificate', {
+    const apiCertificate = new acm.Certificate(this, 'ApiResumeCertificate', {
       domainName: API_DOMAIN_NAME,
-      hostedZone: hostedZone,
+      subjectAlternativeNames: [API_DOMAIN_NAME],
+      validation: acm.CertificateValidation.fromDns(hostedZone)
     });
 
     // Cloudfront Distribution with origin as S3 bucket
@@ -73,7 +74,7 @@ export class ResumeCdkStack extends cdk.Stack {
       },
       defaultRootObject: DEFAULT_ROOT_OBJECT,
       certificate: frontendCertificate,
-      domainNames: [DOMAIN_NAME] ,
+      domainNames: [DOMAIN_NAME],
       comment: 'Cloud Front distribution backed with S3 backet'
     });
 
