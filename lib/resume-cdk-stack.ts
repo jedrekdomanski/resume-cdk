@@ -6,12 +6,6 @@ import { CloudFrontDistribution } from './cloud_front_distribution';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import {
-  RESPONSE_BODY_KEY,
-  RESPONSE_BODY,
-  EMAIL_SUBSCRIPTION,
-  EMAIL_TOPIC_ARN,
-  EMAIL_TOPIC_NAME,
-  SUBJECT_TEXT,
   SES_EMAIL_SOURCE,
   REACH_OUT_SUBJECT
 } from './consts';
