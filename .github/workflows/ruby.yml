@@ -34,6 +34,6 @@ jobs:
         bundler-cache: true # runs 'bundle install' and caches installed gems automatically
     - name: Install gems and run tests
       run: |
-        cd lib/lambdas/api-proxy-handler
+        cd lib/lambdas/email-handler
         bundle install
         rspec handler_spec.rb
