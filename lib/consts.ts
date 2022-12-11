@@ -6,3 +6,5 @@ export const GITHUB_REPO_NAME = 'resume';
 export const DEFAULT_ROOT_OBJECT = 'index.html';
 export const SES_EMAIL_SOURCE = 'jedrek.domanski@gmail.com';
 export const REACH_OUT_SUBJECT = 'reached out to you from your Resume Website';
+export const DOMAIN_NAME = 'jedrzejdomanski.com';
+export const API_DOMAIN_NAME = 'api.jedrzejdomanski.com';

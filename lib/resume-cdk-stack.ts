@@ -1,13 +1,19 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { S3Bucket } from './s3_bucket';
+import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import { S3_BUCKET_NAME } from './consts';
 import { S3BucketDeployment } from './s3_bucket_deployment';
-import { CloudFrontDistribution } from './cloud_front_distribution';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import { S3Origin} from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import {
   SES_EMAIL_SOURCE,
-  REACH_OUT_SUBJECT
+  REACH_OUT_SUBJECT,
+  DOMAIN_NAME,
+  API_DOMAIN_NAME,
+  CLOUD_FRONT_DISTRIBUTION_NAME,
+  DEFAULT_ROOT_OBJECT
 } from './consts';
 import { Queue as SQSQueue } from 'aws-cdk-lib/aws-sqs';
 import { Topic as SNSTopic } from 'aws-cdk-lib/aws-sns';
@@ -25,17 +31,56 @@ import {
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { CodeBuildProject } from './code_build'
 import * as ses from 'aws-cdk-lib/aws-ses';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
 
 export class ResumeCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-    //S3 Bucket
-    const staticWebsiteBucket = new S3Bucket(this);
 
+    //S3 Bucket
+    const staticWebsiteBucket = new Bucket(this, S3_BUCKET_NAME, {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL
+    });
+
+    //S3 Bucket Deployment
     new S3BucketDeployment(this, staticWebsiteBucket);
 
+    // Register Domain and add route to API Gateway
+    const hostedZone = new route53.HostedZone(this, 'MyHostedZone', {
+      zoneName: DOMAIN_NAME,
+    });
+
+    // Create HTTPS certificates for frontend and API
+    const frontendCertificate = new acm.DnsValidatedCertificate(this, 'ResumeAcertificate', {
+      domainName: DOMAIN_NAME,
+      hostedZone: hostedZone,
+      region: 'us-east-1'
+    });
+
+    const apiCertificate = new acm.DnsValidatedCertificate(this, 'ApiResumeCertificate', {
+      domainName: API_DOMAIN_NAME,
+      hostedZone: hostedZone,
+    });
+
     // Cloudfront Distribution with origin as S3 bucket
-    new CloudFrontDistribution(this, staticWebsiteBucket);
+    const distribution = new cloudfront.Distribution(this, CLOUD_FRONT_DISTRIBUTION_NAME, {
+      defaultBehavior: {
+        origin: new S3Origin(staticWebsiteBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        compress: true
+      },
+      defaultRootObject: DEFAULT_ROOT_OBJECT,
+      certificate: frontendCertificate,
+      domainNames: [DOMAIN_NAME] ,
+      comment: 'Cloud Front distribution backed with S3 backet'
+    });
+
+    new route53.ARecord(this, 'ResumeAlias', {
+      zone: hostedZone,
+      target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
+    });
 
     // Lambda function to send an email using SES
     const mailerLambdaFunction = new lambda.Function(this, 'MailerLambdaFunction', {
@@ -90,7 +135,18 @@ export class ResumeCdkStack extends cdk.Stack {
     const api = new apigw.LambdaRestApi(this, 'APIGateway', {
       handler: mailerLambdaFunction,
       proxy: false,
-      cloudWatchRole: true
+      cloudWatchRole: true,
+      domainName: {
+        domainName: API_DOMAIN_NAME,
+        certificate: apiCertificate,
+        securityPolicy: apigw.SecurityPolicy.TLS_1_2
+      }
+    });
+
+    new route53.ARecord(this, 'ApiResumeRecord', {
+      recordName: API_DOMAIN_NAME,
+      zone: hostedZone,
+      target: route53.RecordTarget.fromAlias(new targets.ApiGateway(api))
     });
 
     // Enable API log group
