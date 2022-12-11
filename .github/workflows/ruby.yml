@@ -37,3 +37,6 @@ jobs:
         cd lib/lambdas/api-proxy-handler
         bundle install
         rspec handler_spec.rb
+        cd ../email-handler
+        bundle install
+        rspec handler_spec.rb

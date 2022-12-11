@@ -10,3 +10,5 @@ export const SUBJECT_TEXT = 'New Message From Your Website';
 export const GITHUB_OWNER = 'jedrekdomanski';
 export const GITHUB_REPO_NAME = 'resume';
 export const DEFAULT_ROOT_OBJECT = 'index.html';
+export const SES_EMAIL_SOURCE = 'jedrek.domanski@gmail.com';
+export const REACH_OUT_SUBJECT = 'reached out to you from your Resume Website';

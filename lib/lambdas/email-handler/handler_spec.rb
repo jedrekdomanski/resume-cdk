@@ -10,8 +10,9 @@ RSpec.describe 'handler', :unit do
       'queryStringParameters' => '{ "name": "Test", "message": "Test", "email": "Test" }',
       'body' => '{ "name": "Test", "email": "Email", "message": "message" }'
     }
-    allow(ENV).to receive(:fetch).with('SQS_QUEUE_URL').and_return('http://url')
-    expect(Aws::SQS::Client).to receive_message_chain(:new, :send_message)
+    allow(ENV).to receive(:fetch).with('SES_EMAIL_SOURCE').and_return('email@example.com')
+    allow(ENV).to receive(:fetch).with('REACH_OUT_SUBJECT').and_return('Some text')
+    expect(Aws::SES::Client).to receive_message_chain(:new, :send_email)
 
     result = handler(event: valid_event, context: nil)
     response = JSON.parse(result[:body])

@@ -11,7 +11,9 @@ import {
   EMAIL_SUBSCRIPTION,
   EMAIL_TOPIC_ARN,
   EMAIL_TOPIC_NAME,
-  SUBJECT_TEXT
+  SUBJECT_TEXT,
+  SES_EMAIL_SOURCE,
+  REACH_OUT_SUBJECT
 } from './consts';
 import { Queue as SQSQueue } from 'aws-cdk-lib/aws-sqs';
 import { Topic as SNSTopic } from 'aws-cdk-lib/aws-sns';
@@ -28,6 +30,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { CodeBuildProject } from './code_build'
+import * as ses from 'aws-cdk-lib/aws-ses';
 
 export class ResumeCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -40,35 +43,38 @@ export class ResumeCdkStack extends cdk.Stack {
     // Cloudfront Distribution with origin as S3 bucket
     new CloudFrontDistribution(this, staticWebsiteBucket);
 
-    // SQS Queue
-    const queue = new SQSQueue(this, 'EmailSqsQueue');
-
-    // SNS Topic and subscription to the topic
-    const topic = new SNSTopic(this, EMAIL_TOPIC_NAME, { displayName: 'Your Website' });
-    topic.addSubscription(new EmailSubscription(EMAIL_SUBSCRIPTION));
-
-    // Lambda function to send a message to SQS
-    const apiProxyLambda = new lambda.Function(this, 'apiProxyLambda', {
+    // Lambda function to send an email using SES
+    const mailerLambdaFunction = new lambda.Function(this, 'MailerLambdaFunction', {
       runtime: lambda.Runtime.RUBY_2_7,
       handler: 'index.handler',
       memorySize: 1024,
+      code: lambda.Code.fromAsset('lib/lambdas/email-handler'),
       timeout: cdk.Duration.seconds(3),
-      code: lambda.Code.fromAsset('lib/lambdas/api-proxy-handler'),
       environment: {
-        'SQS_QUEUE_URL': queue.queueUrl
+        'SES_EMAIL_SOURCE': SES_EMAIL_SOURCE,
+        'REACH_OUT_SUBJECT': REACH_OUT_SUBJECT
       }
     });
 
-    // Create and add policy statement to allow lambda to send message to SQS queue
-    const sendMessagePolicy = new PolicyStatement({
-      actions: [ 'sqs:SendMessage' ],
-      resources: [queue.queueArn]
-    });
+    //SES email identity
+    const identity = ses.Identity.email(SES_EMAIL_SOURCE)
+    new ses.EmailIdentity(this, 'EmailIdentity', { identity: identity });
 
-    apiProxyLambda.role?.attachInlinePolicy(
-      new Policy(this, 'send-message', { statements: [sendMessagePolicy] })
-    )
+    // Create and add policy statement to allow lambda to send email using SES
+    const sendEmailPolicy = new PolicyStatement({
+      actions: [
+        'ses:SendEmail',
+        'ses:SendRawEmail',
+        'ses:SendTemplatedEmail',
+      ],
+      resources: [
+        `arn:aws:ses:${process.env.CDK_DEFAULT_ACCOUNT}:${process.env.CDK_DEFAULT_ACCOUNT}:identity/${identity.value}`
+      ]
+    })
 
+    mailerLambdaFunction.addToRolePolicy(sendEmailPolicy)
+
+    // CLoudWatch role for API Gateway
     const cloudWatchRole = new Role(this, 'CloudWatchRole', {
       assumedBy: new ServicePrincipal('apigateway.amazonaws.com'),
       description: 'Grant write access to CloudWatch',
@@ -86,9 +92,9 @@ export class ResumeCdkStack extends cdk.Stack {
       cloudWatchRoleArn: cloudWatchRole.roleArn,
     });
 
-    // API Gateway REST API backed by "apiProxyLambda" function.
+    // API Gateway REST API backed by "mailerLambdaFunction" function.
     const api = new apigw.LambdaRestApi(this, 'APIGateway', {
-      handler: apiProxyLambda,
+      handler: mailerLambdaFunction,
       proxy: false,
       cloudWatchRole: true
     });
@@ -114,50 +120,9 @@ export class ResumeCdkStack extends cdk.Stack {
     };
     logGroup.grantWrite(new ServicePrincipal('apigateway.amazonaws.com'));
 
+    // Define API Gateway resources
     const items = api.root.addResource('sendEmail');
     items.addMethod('POST'); // POST /sendEmail
-
-    // Lambda to publish the message to SNS topic
-    const sqsMessagePublisherLambda = new lambda.Function(this, 'SQSPublisherLambda', {
-      runtime: lambda.Runtime.RUBY_2_7,
-      handler: 'index.handler',
-      memorySize: 1024,
-      timeout: cdk.Duration.seconds(3),
-      code: lambda.Code.fromAsset('lib/lambdas/sqs-publisher-lambda'),
-      environment: {
-        'EMAIL_TOPIC_ARN': topic.topicArn,
-        'JOB_OFFER_SUBJECT': SUBJECT_TEXT
-      }
-    });
-    const eventSource = new SqsEventSource(queue);
-    sqsMessagePublisherLambda.addEventSource(eventSource)
-
-    // Create a policy statement to allow lambda to read/delete/GetQueueAttributes from SQS queue
-    const sqsManageMessagesPolicy = new PolicyStatement({
-      actions: [
-        'sqs:ReceiveMessage',
-        'sqs:DeleteMessage',
-        'sqs:GetQueueAttributes'
-      ],
-      resources: [queue.queueArn]
-    });
-
-    // Create a policy statement to allow lambda to publish messages to SNS topic
-    const publishMessagesToTopicPolicy = new PolicyStatement({
-      actions: [
-        'sns:Publish'
-      ],
-      resources: [topic.topicArn]
-    });
-
-    sqsMessagePublisherLambda.role?.attachInlinePolicy(
-      new Policy(this, 'manage-queue-messages',{
-        statements: [
-          sqsManageMessagesPolicy,
-          publishMessagesToTopicPolicy
-        ]
-      })
-    )
 
     new CodeBuildProject(this);
   }
