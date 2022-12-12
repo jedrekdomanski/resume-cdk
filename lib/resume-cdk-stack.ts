@@ -108,7 +108,7 @@ export class ResumeCdkStack extends cdk.Stack {
         'ses:SendTemplatedEmail',
       ],
       resources: [
-        `arn:aws:ses:${process.env.CDK_DEFAULT_ACCOUNT}:${process.env.CDK_DEFAULT_ACCOUNT}:identity/${identity.value}`
+        `arn:aws:ses:${process.env.CDK_DEFAULT_ACCOUNT}:${process.env.CDK_DEFAULT_ACCOUNT}:identity/${SES_EMAIL_SOURCE}`
       ]
     })
 
