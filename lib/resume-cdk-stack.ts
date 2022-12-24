@@ -151,6 +151,11 @@ export class ResumeCdkStack extends cdk.Stack {
       },
       endpointConfiguration: {
         types: [apigw.EndpointType.REGIONAL]
+      },
+      disableExecuteApiEndpoint: true,
+      defaultCorsPreflightOptions: {
+        allowOrigins: [ `https://${DOMAIN_NAME}` ],
+        allowMethods: [ 'POST' ]
       }
     });
 

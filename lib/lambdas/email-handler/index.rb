@@ -46,7 +46,10 @@ def success
     body: JSON.generate(message: 'Thank you for reaching out! I\'ll contact you as soon as I can'),
     statusCode: 200,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Origin': 'https://jedrzej.domanski.com',
+      'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
     },
     isBase64Encoded: false
   }
