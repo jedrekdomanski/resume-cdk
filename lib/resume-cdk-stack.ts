@@ -1,13 +1,21 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import { S3Bucket } from './s3_bucket';
+import { Bucket, BlockPublicAccess } from 'aws-cdk-lib/aws-s3';
+import { S3_BUCKET_NAME } from './consts';
 import { S3BucketDeployment } from './s3_bucket_deployment';
-import { CloudFrontDistribution } from './cloud_front_distribution';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import { S3Origin} from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import {
   SES_EMAIL_SOURCE,
-  REACH_OUT_SUBJECT
+  REACH_OUT_SUBJECT,
+  DOMAIN_NAME,
+  WWW_DOMAIN_NAME,
+  API_DOMAIN_NAME,
+  CLOUD_FRONT_DISTRIBUTION_NAME,
+  DEFAULT_ROOT_OBJECT,
+  HOSTED_ZONE_ID
 } from './consts';
 import { Queue as SQSQueue } from 'aws-cdk-lib/aws-sqs';
 import { Topic as SNSTopic } from 'aws-cdk-lib/aws-sns';
@@ -25,17 +33,58 @@ import {
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { CodeBuildProject } from './code_build'
 import * as ses from 'aws-cdk-lib/aws-ses';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as targets from 'aws-cdk-lib/aws-route53-targets';
 
 export class ResumeCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-    //S3 Bucket
-    const staticWebsiteBucket = new S3Bucket(this);
 
+    //S3 Bucket
+    const staticWebsiteBucket = new Bucket(this, S3_BUCKET_NAME, {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL
+    });
+
+    //S3 Bucket Deployment
     new S3BucketDeployment(this, staticWebsiteBucket);
 
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'MyZone', {
+       hostedZoneId: HOSTED_ZONE_ID,
+       zoneName: DOMAIN_NAME
+     });
+
+    // Create HTTPS certificates for frontend and API
+    const certificate = new acm.DnsValidatedCertificate(this, 'ResumeCertificate', {
+      domainName: DOMAIN_NAME,
+      hostedZone: hostedZone,
+      region: 'us-east-1'
+    });
+
+    const apiCertificate = new acm.Certificate(this, 'ApiResumeCertificate', {
+      domainName: API_DOMAIN_NAME,
+      certificateName: API_DOMAIN_NAME,
+      validation: acm.CertificateValidation.fromDns(hostedZone)
+    });
+
     // Cloudfront Distribution with origin as S3 bucket
-    new CloudFrontDistribution(this, staticWebsiteBucket);
+    const distribution = new cloudfront.Distribution(this, CLOUD_FRONT_DISTRIBUTION_NAME, {
+      defaultBehavior: {
+        origin: new S3Origin(staticWebsiteBucket),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        compress: true
+      },
+      defaultRootObject: DEFAULT_ROOT_OBJECT,
+      certificate: certificate,
+      domainNames: [DOMAIN_NAME],
+      comment: 'Cloud Front distribution backed with S3 backet'
+    });
+
+    new route53.ARecord(this, 'jedrzejdomanski.com', {
+      recordName: DOMAIN_NAME,
+      zone: hostedZone,
+      target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution))
+    });
 
     // Lambda function to send an email using SES
     const mailerLambdaFunction = new lambda.Function(this, 'MailerLambdaFunction', {
@@ -52,18 +101,21 @@ export class ResumeCdkStack extends cdk.Stack {
 
     //SES email identity
     const identity = ses.Identity.email(SES_EMAIL_SOURCE)
-    new ses.EmailIdentity(this, 'EmailIdentity', { identity: identity });
-
-    // Create and add policy statement to allow lambda to send email using SES
+    const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', { identity: identity });
+    const emailIdentityArn = cdk.Stack.of(this).formatArn({
+      service: 'ses',
+      resource: 'identity',
+      resourceName: emailIdentity.emailIdentityName,
+      arnFormat: cdk.ArnFormat.SLASH_RESOURCE_NAME,
+    });
+    // Create and add policy statement to allow lambda to send emails using SES
     const sendEmailPolicy = new PolicyStatement({
       actions: [
         'ses:SendEmail',
         'ses:SendRawEmail',
         'ses:SendTemplatedEmail',
       ],
-      resources: [
-        `arn:aws:ses:${process.env.CDK_DEFAULT_ACCOUNT}:${process.env.CDK_DEFAULT_ACCOUNT}:identity/${identity.value}`
-      ]
+      resources: [ emailIdentityArn ]
     })
 
     mailerLambdaFunction.addToRolePolicy(sendEmailPolicy)
@@ -90,7 +142,23 @@ export class ResumeCdkStack extends cdk.Stack {
     const api = new apigw.LambdaRestApi(this, 'APIGateway', {
       handler: mailerLambdaFunction,
       proxy: false,
-      cloudWatchRole: true
+      cloudWatchRole: true,
+      domainName: {
+        domainName: API_DOMAIN_NAME,
+        certificate: apiCertificate,
+        basePath: 'api',
+        securityPolicy: apigw.SecurityPolicy.TLS_1_2
+      },
+      endpointConfiguration: {
+        types: [apigw.EndpointType.REGIONAL]
+      }
+    });
+
+    // DNS A records
+    new route53.ARecord(this, 'api.jedrzejdomanski.com', {
+      recordName: API_DOMAIN_NAME,
+      zone: hostedZone,
+      target: route53.RecordTarget.fromAlias(new targets.ApiGateway(api))
     });
 
     // Enable API log group
