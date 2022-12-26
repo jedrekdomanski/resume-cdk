@@ -47,9 +47,9 @@ def success
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Origin': 'https://jedrzej.domanski.com',
-      'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+      'Access-Control-Allow-Headers': 'Origin,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'GET,OPTIONS,POST',
+      'Access-Control-Allow-Origin': '*'
     },
     isBase64Encoded: false
   }
@@ -60,7 +60,10 @@ def error(error)
     body: JSON.generate({ error: error.message }),
     statusCode: 400,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Headers': 'Origin,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'GET,OPTIONS,POST',
+      'Access-Control-Allow-Origin': '*'
     },
     isBase64Encoded: false
   }

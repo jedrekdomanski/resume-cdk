@@ -143,6 +143,7 @@ export class ResumeCdkStack extends cdk.Stack {
       handler: mailerLambdaFunction,
       proxy: false,
       cloudWatchRole: true,
+      disableExecuteApiEndpoint: true,
       domainName: {
         domainName: API_DOMAIN_NAME,
         certificate: apiCertificate,
@@ -151,11 +152,6 @@ export class ResumeCdkStack extends cdk.Stack {
       },
       endpointConfiguration: {
         types: [apigw.EndpointType.REGIONAL]
-      },
-      disableExecuteApiEndpoint: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: [ `https://${DOMAIN_NAME}` ],
-        allowMethods: [ 'POST' ]
       }
     });
 
@@ -189,7 +185,16 @@ export class ResumeCdkStack extends cdk.Stack {
 
     // Define API Gateway resources
     const items = api.root.addResource('sendEmail');
-    items.addMethod('POST'); // POST /sendEmail
+    items.addMethod('POST', new apigw.LambdaIntegration(mailerLambdaFunction), {
+      methodResponses: [{
+        statusCode: '200',
+        responseParameters: {
+          "method.response.header.Access-Control-Allow-Headers": true,
+          "method.response.header.Access-Control-Allow-Methods": true,
+          "method.response.header.Access-Control-Allow-Origin": true,
+        }
+      }]
+    }); // POST /sendEmail
 
     new CodeBuildProject(this);
   }
