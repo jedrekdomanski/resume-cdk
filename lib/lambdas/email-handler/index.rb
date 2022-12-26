@@ -43,7 +43,7 @@ end
 
 def success
   {
-    body: JSON.generate(message: 'Thank you for reaching out! I\'ll contact you as soon as I can'),
+    body: JSON.generate(message: 'Thank you for reaching out! I\'ll contact you as soon as I can.'),
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
@@ -83,8 +83,7 @@ def build_message(name, email, message)
       body: {
         html: {
           charset: 'UTF-8',
-          data: "Message from #{name}: #{message}, sender email: #{email} " \
-            "<a class=\"ulink\" href=\"http://docs.aws.amazon.com/ses/latest/DeveloperGuide\" target=\"_blank\">Amazon SES Developer Guide</a>."
+          data: "Message from #{name}: #{message}, sender email: #{email}"
         }
       }
     }

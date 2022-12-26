@@ -17,7 +17,7 @@ RSpec.describe 'handler', :unit do
     result = handler(event: valid_event, context: nil)
     response = JSON.parse(result[:body])
 
-    expect(response['message']).to eq('Thank you for reaching out! I\'ll contact you as soon as I can')
+    expect(response['message']).to eq('Thank you for reaching out! I\'ll contact you as soon as I can.')
     expect(result[:statusCode]).to eq(200)
   end
 
