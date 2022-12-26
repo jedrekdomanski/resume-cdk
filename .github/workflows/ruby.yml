@@ -36,4 +36,4 @@ jobs:
       run: |
         cd lib/lambdas/email-handler
         bundle install
-        rspec handler_spec.rb
+        rspec index_spec.rb
