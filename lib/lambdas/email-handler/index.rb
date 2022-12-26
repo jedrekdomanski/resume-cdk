@@ -46,7 +46,10 @@ def success
     body: JSON.generate(message: 'Thank you for reaching out! I\'ll contact you as soon as I can'),
     statusCode: 200,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Headers': 'Origin,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'GET,OPTIONS,POST',
+      'Access-Control-Allow-Origin': '*'
     },
     isBase64Encoded: false
   }
@@ -57,7 +60,10 @@ def error(error)
     body: JSON.generate({ error: error.message }),
     statusCode: 400,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Headers': 'Origin,Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+      'Access-Control-Allow-Methods': 'GET,OPTIONS,POST',
+      'Access-Control-Allow-Origin': '*'
     },
     isBase64Encoded: false
   }
